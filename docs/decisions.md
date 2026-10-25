@@ -56,3 +56,18 @@ Each entry: the decision, why, alternatives considered, and when to revisit it.
   method would lose those boxes, hiding detector coverage); hard-code the numbers
   (simpler, but drifts silently when the app changes).
 - **Revisit if:** The app's thresholds become per-device or are loaded at run time.
+
+## 6. Check the pipeline with a generated fixture that has planted errors
+
+- **Decision:** `depth_eval/fixture.py` generates 10 synthetic scene groups (60
+  frames) whose models have known errors: +10%, -0.2 m, a relative model with a
+  known scale, a baseline 25% too far, 6 low-confidence people, and one missing
+  prediction. Tests rebuild it in a temporary folder on every run, and every file
+  is labeled `SYNTHETIC CORRECTNESS FIXTURE - NOT ACCURACY DATA`.
+- **Why:** Known answers show whether the math is right. Real recordings cannot do
+  that, because their true error is what we are trying to measure.
+- **Alternatives:** Commit the generated files (faster tests, but about 7 MB of
+  binary data that can go stale); random noise (more realistic, but answers are
+  no longer exact).
+- **Revisit if:** Real recordings exist; then add a small real-data smoke test,
+  never reported as accuracy evidence on its own.
