@@ -324,13 +324,27 @@ def analyze(csv_path, output_dir, frozen_path=None, replicates=10000):
                 ci['hi'] is not None and (ci['hi'] < 0 if key == 'paired_median_abs_rel' else ci['hi'] <= 0))
     save(out/'decision_review.json', gates)
     title = 'SYNTHETIC SMOKE — NOT ACCURACY EVIDENCE' if run['synthetic'] else 'Offline evaluation — evidence review required'
+    def fmt(v):
+        return 'N/A' if v is None else f'{v:.4f}'
     lines = [f'# {title}', '', 'Verdict: **Inconclusive**. '+gates['reason']+'.', '',
-             '| Method | Valid GT | Estimates | Median AbsRel | p90 error (m) | Failure |', '|---|---:|---:|---:|---:|---:|']
+             f'Primary set: supported YOLO detections, ground truth 0.2-3 m. Test split: {coverage["groups"]} scene groups, '
+             f'{coverage["observations"]} observations. Chosen on tuning data: `{selected}`.', '',
+             '| Method | Valid GT | Estimates | Coverage | Median AbsRel | p90 error (m) | Failure |',
+             '|---|---:|---:|---:|---:|---:|---:|']
     for method in methods:
         m = metrics(primary(rows), method)
-        def fmt(v):
-            return 'N/A' if v is None else f'{v:.4f}'
-        lines.append(f'| {method} | {m["n"]} | {m["estimates"]} | {fmt(m["median_abs_rel"])} | {fmt(m["p90_abs_m"])} | {fmt(m["failure_rate"])} |')
+        lines.append(f'| {method} | {m["n"]} | {m["estimates"]} | {fmt(m["coverage"])} | {fmt(m["median_abs_rel"])} '
+                     f'| {fmt(m["p90_abs_m"])} | {fmt(m["failure_rate"])} |')
+    lines += ['', f'## Candidate minus baseline, 95% scene-bootstrap intervals ({replicates} resamples of whole scene groups)', '',
+              'Negative is better for errors and failures; positive is better for coverage. '
+              'Paired = objects where both have an estimate; full = every eligible object.', '',
+              '| Method | Paired median AbsRel | Full failure rate | Full >20% overestimation | Full coverage |',
+              '|---|---|---|---|---|']
+    def interval(ci):
+        return 'N/A' if ci['difference'] is None else f'{ci["difference"]:+.4f} [{fmt(ci["lo"])}, {fmt(ci["hi"])}]'
+    for method, comp in comparisons.items():
+        lines.append(f'| {method} | {interval(comp["paired_median_abs_rel"])} | {interval(comp["full_failure_rate"])} '
+                     f'| {interval(comp["full_over20_rate"])} | {interval(comp["full_coverage"])} |')
     lines += ['', 'See strata.csv, paired.json, coverage.json, failure_examples.json, uncertainty.json and SVG plots.',
               'Oracle methods leak GT and cannot win. Intrinsics proxy is not the shipped camera baseline.',
               'On-device latency, memory, thermals, conversion parity and real-world uncertainty trust are not inferred from this report.']

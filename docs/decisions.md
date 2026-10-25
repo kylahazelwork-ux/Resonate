@@ -71,3 +71,16 @@ Each entry: the decision, why, alternatives considered, and when to revisit it.
   no longer exact).
 - **Revisit if:** Real recordings exist; then add a small real-data smoke test,
   never reported as accuracy evidence on its own.
+
+## 7. One command runs the whole evaluation in a fixed order
+
+- **Decision:** `python -m depth_eval run` (real data) and `python -m depth_eval fixture`
+  (synthetic) both call `run_all`: calibrate on calibration scenes, choose on selection
+  scenes, then report on test scenes. The fixture defaults to 2,000 bootstrap resamples;
+  real runs always use 10,000.
+- **Why:** Six steps in a required order is easy to get wrong by hand, and running them
+  out of order could let test data influence the chosen method.
+- **Alternatives:** A shell script (simpler, but platform-specific and harder to test);
+  keeping the separate function calls (flexible, but not reproducible by another engineer).
+- **Revisit if:** Steps need to run on different machines, such as model inference on a
+  Mac; then split the command at that boundary.
