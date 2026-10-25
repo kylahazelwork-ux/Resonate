@@ -1,0 +1,86 @@
+# Decisions
+
+Each entry: the decision, why, alternatives considered, and when to revisit it.
+
+## 1. Start from the team's latest commit, not the local `main`
+
+- **Decision:** Branch `feature/depth-eval-reproducible` from `e92f50f`.
+- **Why:** The laptop's `main` was 44 commits behind. Those commits include the
+  object-height changes the depth evaluation reads, so an older base would
+  evaluate an outdated app.
+- **Alternatives:** Local `main` (outdated); a separate branch per area from the start
+  (cleaner PRs, but more branch management at this stage).
+- **Revisit if:** The team moves past `e92f50f` before these changes merge; rebase then.
+
+## 2. Commit the existing evaluation work unchanged first
+
+- **Decision:** Commit `Evaluation/` and `docs/depth-eval-plan.md` as they were
+  (`0b35869`), before any fixes.
+- **Why:** Every later improvement appears as its own reviewable diff, and the
+  "before" state is preserved.
+- **Alternatives:** Commit together with the fixes (smaller history, but reviewers
+  cannot see what changed).
+- **Revisit if:** Never; history is kept as is.
+
+## 3. Verify each area on the hardware actually available
+
+- **Decision:** Python on Windows; Docker on Ubuntu (WSL2); Swift tests on a GitHub
+  Actions macOS runner. The on-iPhone benchmark is reported as not run.
+- **Why:** Only a Windows laptop and an iPhone are available. Installing on an
+  iPhone requires Xcode on macOS.
+- **Alternatives:** Borrowing a Mac (not available); renting a cloud Mac (cost,
+  and attaching a phone is impractical).
+- **Revisit if:** A Mac becomes available; then run the YOLO benchmark on the
+  iPhone 15 Pro Max.
+
+## 4. Check the parsed classes against the Swift source, not a fixed count
+
+- **Decision:** `parse_priors` fails unless it understood every `Entry(label:` in
+  `ObjectCatalog.swift`.
+- **Why:** A teammate swapped `traffic light` for `backpack`; the count stayed 23,
+  so the old `len(PRIORS) != 23` check passed while the class list changed.
+- **Alternatives:** Update the fixed count (breaks again on the next swap); pin a
+  hash of the Swift file (catches every edit, including harmless comment changes).
+- **Revisit if:** The catalog moves to a format the regular expression cannot read,
+  such as a JSON resource; then read that format directly.
+
+## 5. Apply the app's per-class confidence thresholds in the baseline
+
+- **Decision:** `baseline()` returns no estimate (`below_shipped_confidence`) for a
+  detection under the app's threshold: 0.65 people, 0.6 vehicles, 0.3 traffic
+  lights, 0.5 otherwise. The numbers are read from `ObjectCatalog.swift`; a test
+  checks that the class groups match its `switch`.
+- **Why:** The baseline must behave like the shipped app. Without this, it would
+  score detections the app never reports, making the "before" numbers wrong.
+- **Alternatives:** Filter detections earlier, during replay (fewer rows, but every
+  method would lose those boxes, hiding detector coverage); hard-code the numbers
+  (simpler, but drifts silently when the app changes).
+- **Revisit if:** The app's thresholds become per-device or are loaded at run time.
+
+## 6. Check the pipeline with a generated fixture that has planted errors
+
+- **Decision:** `depth_eval/fixture.py` generates 10 synthetic scene groups (60
+  frames) whose models have known errors: +10%, -0.2 m, a relative model with a
+  known scale, a baseline 25% too far, 6 low-confidence people, and one missing
+  prediction. Tests rebuild it in a temporary folder on every run, and every file
+  is labeled `SYNTHETIC CORRECTNESS FIXTURE - NOT ACCURACY DATA`.
+- **Why:** Known answers show whether the math is right. Real recordings cannot do
+  that, because their true error is what we are trying to measure.
+- **Alternatives:** Commit the generated files (faster tests, but about 7 MB of
+  binary data that can go stale); random noise (more realistic, but answers are
+  no longer exact).
+- **Revisit if:** Real recordings exist; then add a small real-data smoke test,
+  never reported as accuracy evidence on its own.
+
+## 7. One command runs the whole evaluation in a fixed order
+
+- **Decision:** `python -m depth_eval run` (real data) and `python -m depth_eval fixture`
+  (synthetic) both call `run_all`: calibrate on calibration scenes, choose on selection
+  scenes, then report on test scenes. The fixture defaults to 2,000 bootstrap resamples;
+  real runs always use 10,000.
+- **Why:** Six steps in a required order is easy to get wrong by hand, and running them
+  out of order could let test data influence the chosen method.
+- **Alternatives:** A shell script (simpler, but platform-specific and harder to test);
+  keeping the separate function calls (flexible, but not reproducible by another engineer).
+- **Revisit if:** Steps need to run on different machines, such as model inference on a
+  Mac; then split the command at that boundary.

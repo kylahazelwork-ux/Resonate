@@ -1,0 +1,6 @@
+# Optional inference environment. Proposed pins, NOT validated/installed here.
+# Ask before installation. Export a complete pip freeze after validation.
+torch==2.7.1
+torchvision==0.22.1
+numpy==2.2.6
+opencv-python==4.11.0.86

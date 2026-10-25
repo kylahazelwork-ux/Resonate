@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "seed": 20261010,
+  "bootstrap_replicates": 10000,
+  "models": [
+    {"id": "hypersim", "kind": "metric", "map_key": "hypersim", "max_depth": 20},
+    {"id": "vkitti", "kind": "metric", "map_key": "vkitti", "max_depth": 80},
+    {"id": "relative", "kind": "relative", "map_key": "relative"}
+  ]
+}
