@@ -25,7 +25,13 @@ def parse_priors(source):
     return priors
 
 
-PRIORS = parse_priors(CATALOG.read_text(encoding='utf-8'))
+_SOURCE = CATALOG.read_text(encoding='utf-8')
+PRIORS = parse_priors(_SOURCE)
+# Thresholds from ObjectCatalog.minimumConfidence(for:), applied by ObjectDetector before distances.
+CONFIDENCE = {name: float(value) for name, value in re.findall(
+    r'static let (\w+Confidence): Float = ([0-9.]+)', _SOURCE)}
+CONFIDENCE_GROUPS = {'traffic light': 'signalConfidence', 'person': 'personConfidence',
+                     **dict.fromkeys(('car', 'truck', 'bus', 'train', 'motorcycle', 'bicycle'), 'vehicleConfidence')}
 VARIANTS = ('center_median', 'center_p25', 'lower_median')
 SEED = 20261010
 
@@ -77,11 +83,23 @@ def mad(values):
     return st.median(abs(x - m) for x in values)
 
 
-def baseline(label, box, image_height, focal):
-    """Same guards/arithmetic as ObjectCatalog + FrameAnalysis (no improvements)."""
+def minimum_confidence(label):
+    """Detector threshold for a class: its group's value from CONFIDENCE_GROUPS,
+    or CONFIDENCE['minimumConfidence'] for every other class."""
+    threshold_name = CONFIDENCE_GROUPS.get(label, 'minimumConfidence')
+    return CONFIDENCE[threshold_name]
+
+
+def baseline(label, box, image_height, focal, confidence=None):
+    """Same guards/arithmetic as ObjectDetector + ObjectCatalog + FrameAnalysis (no improvements).
+
+    confidence=None skips the detector threshold (manual boxes have no detector score).
+    """
     height = PRIORS.get(label.lower())
     if height is None:
         return None, 'unsupported_class'
+    if confidence is not None and confidence < minimum_confidence(label):
+        return None, 'below_shipped_confidence'
     _, y, _, h = box
     if y < .01 or y + h > .99:
         return None, 'vertical_edge'

@@ -254,8 +254,8 @@ def evaluate(dataset_path, replay_path, predictions_path, config_path, output_di
             lidar_ann = dict(ann)
             lidar_ann.pop('tape_z_m', None)
             lidar_g, _ = truth(depth, confidence, dd, box, r['sensor_crop'], lidar_ann)
-            base, base_status = baseline(det['class'], box, r['image_height'], r.get('fov_focal_pixels'))
-            proxy, proxy_status = baseline(det['class'], box, r['image_height'], r['intrinsics_focal_pixels'])
+            base, base_status = baseline(det['class'], box, r['image_height'], r.get('fov_focal_pixels'), det['confidence'])
+            proxy, proxy_status = baseline(det['class'], box, r['image_height'], r['intrinsics_focal_pixels'], det['confidence'])
             if r['baseline_mode'] != 'exact_camera_mode':
                 base, base_status = None, 'camera_mode_not_validated'
             if track == 'manual':

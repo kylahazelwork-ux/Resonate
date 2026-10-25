@@ -43,3 +43,16 @@ Each entry: the decision, why, alternatives considered, and when to revisit it.
   hash of the Swift file (catches every edit, including harmless comment changes).
 - **Revisit if:** The catalog moves to a format the regular expression cannot read,
   such as a JSON resource; then read that format directly.
+
+## 5. Apply the app's per-class confidence thresholds in the baseline
+
+- **Decision:** `baseline()` returns no estimate (`below_shipped_confidence`) for a
+  detection under the app's threshold: 0.65 people, 0.6 vehicles, 0.3 traffic
+  lights, 0.5 otherwise. The numbers are read from `ObjectCatalog.swift`; a test
+  checks that the class groups match its `switch`.
+- **Why:** The baseline must behave like the shipped app. Without this, it would
+  score detections the app never reports, making the "before" numbers wrong.
+- **Alternatives:** Filter detections earlier, during replay (fewer rows, but every
+  method would lose those boxes, hiding detector coverage); hard-code the numbers
+  (simpler, but drifts silently when the app changes).
+- **Revisit if:** The app's thresholds become per-device or are loaded at run time.
