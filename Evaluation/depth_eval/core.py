@@ -11,10 +11,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / 'Resonate/Models/ObjectCatalog.swift'
-PRIORS = {name: float(height) for name, height in re.findall(
-    r'"([^"]+)": Entry\([^\n]+typicalHeight: ([0-9.]+)\)', CATALOG.read_text(encoding='utf-8'))}
-if len(PRIORS) != 23:
-    raise RuntimeError('ObjectCatalog changed: review the frozen baseline before running')
+
+
+def parse_priors(source):
+    """Class name -> typical height (m) from ObjectCatalog.swift source text.
+
+    Fails if any entry was not understood, rather than trusting a fixed class count.
+    """
+    priors = {name: float(height) for name, height in re.findall(
+        r'"([^"]+)": Entry\([^\n]+typicalHeight: ([0-9.]+)\)', source)}
+    if not priors or len(priors) != source.count('Entry(label:'):
+        raise RuntimeError('Could not parse every ObjectCatalog entry: review the baseline port')
+    return priors
+
+
+PRIORS = parse_priors(CATALOG.read_text(encoding='utf-8'))
 VARIANTS = ('center_median', 'center_p25', 'lower_median')
 SEED = 20261010
 

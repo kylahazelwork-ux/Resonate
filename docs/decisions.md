@@ -32,3 +32,14 @@ Each entry: the decision, why, alternatives considered, and when to revisit it.
   and attaching a phone is impractical).
 - **Revisit if:** A Mac becomes available; then run the YOLO benchmark on the
   iPhone 15 Pro Max.
+
+## 4. Check the parsed classes against the Swift source, not a fixed count
+
+- **Decision:** `parse_priors` fails unless it understood every `Entry(label:` in
+  `ObjectCatalog.swift`.
+- **Why:** A teammate swapped `traffic light` for `backpack`; the count stayed 23,
+  so the old `len(PRIORS) != 23` check passed while the class list changed.
+- **Alternatives:** Update the fixed count (breaks again on the next swap); pin a
+  hash of the Swift file (catches every edit, including harmless comment changes).
+- **Revisit if:** The catalog moves to a format the regular expression cannot read,
+  such as a JSON resource; then read that format directly.
