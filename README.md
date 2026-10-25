@@ -1,5 +1,81 @@
 # Resonate
 
+> **Kyla Hazel's portfolio fork** of [chimkenIJ/resonate](https://github.com/chimkenIJ/resonate),
+> built by a three-person team at the Hacklanta hackathon (October 2026).
+> The team's original README follows [below](#about-resonate).
+
+## My role
+
+During the hackathon I worked on:
+
+- **Obstacle detection:** running the YOLO11s neural network on-device with Core ML and
+  Apple Vision, and lowering the analysis frame rate as the phone heats up
+  ([ObjectDetector.swift](Resonate/Services/Live/Vision/ObjectDetector.swift)).
+- **LiDAR depth processing:** measuring obstacle distance and the terrain ahead from ARKit
+  depth, filtering noisy readings so alerts only trigger for nearby objects in the
+  user's path ([DepthReader.swift](Resonate/Services/Live/Vision/DepthReader.swift),
+  [TerrainAnalyzer.swift](Resonate/Models/TerrainAnalyzer.swift)).
+- **Depth evaluation pipeline:** a Python tool that measures distance-estimate accuracy
+  with robust statistics and scene-level bootstrap intervals ([Evaluation/](Evaluation/)).
+- **Map services:** Valhalla routing and Nominatim search in Docker containers
+  ([server/](server/)).
+
+I only had a Windows laptop at the event, so I wrote the iOS and server code on teammates'
+Macs, and those commits appear under a teammate's account. The follow-up work below is in
+my own commits.
+
+## My follow-up work
+
+I'm hardening the parts I worked on with tests and reproducible measurements, on Windows
+and Linux.
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Reproducible depth evaluation | Done | [Commits](https://github.com/kylahazelwork-ux/Resonate/commits/feature/depth-eval-reproducible) · [README](Evaluation/README.md) · [decisions](docs/decisions.md) |
+| Bootstrap and data-leakage tests | In progress | |
+| YOLO thermal-throttling tests and timing | Planned | |
+| LiDAR filtering regression tests | Planned | |
+| Docker map-service smoke check | Planned | |
+
+What's done in the depth evaluation so far:
+
+- **[Fixed a silent drift bug](https://github.com/kylahazelwork-ux/Resonate/commit/5987df8):**
+  the evaluation checked for exactly 23 object classes. A teammate swapped one class for
+  another, so the check passed while the class list was wrong. It now checks against the
+  Swift source.
+- **[Matched the shipped app](https://github.com/kylahazelwork-ux/Resonate/commit/32b07ef):**
+  the baseline now drops low-confidence detections the same way the app does (65% for
+  people, 60% for vehicles).
+- **[Added a correctness fixture](https://github.com/kylahazelwork-ux/Resonate/commit/c799868):**
+  synthetic data with planted errors, so tests can check that the math comes out exactly right.
+- **[One command for the whole report](https://github.com/kylahazelwork-ux/Resonate/commit/ee753a0):**
+  error metrics, coverage, and 95% intervals from resampling whole scene groups.
+
+Results on the synthetic fixture. These check the pipeline's math; **they are not
+real-world accuracy**:
+
+| Planted error | Pipeline reported |
+| --- | --- |
+| Baseline 25% too far | 0.2500 median relative error |
+| Model 10% too far | 0.1000 |
+| Model 0.2 m too near | −0.2000 m median bias |
+| 1 missing prediction out of 72 | coverage 71/72, counted as a failure |
+
+Try it (Python 3, no installs):
+
+```sh
+cd Evaluation
+python -m unittest discover -s tests -v
+python -m depth_eval fixture --out artifacts/fixture-report
+```
+
+**Not yet measured:** on-iPhone speed and thermal behavior, and accuracy on real recordings.
+Both need a Mac with Xcode to install the app on a phone.
+
+---
+
+## About Resonate
+
 Resonate is an iOS accessibility prototype for blind and low-vision users who want richer situational awareness while navigating the world.
 
 Everyday navigation is hard when you cannot reliably tell what is in front of you, where the safest route is, or how to understand indoor spaces. Resonate brings obstacle detection, spoken guidance, vibration cues, and accessibility-aware mapping into one app to help users explore surroundings and navigate with more confidence.
