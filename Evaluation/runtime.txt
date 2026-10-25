@@ -1,0 +1,4 @@
+Core analysis: Python 3.14.7, standard library only (tested host version).
+Apple capture/replay: iOS 17+ SDK, macOS 14+ SDK; Xcode/Swift build pending on a Mac.
+Optional model environment: use Python 3.11.9 with requirements-models.txt.
+Do not install optional model dependencies without approval; PyTorch is large.
